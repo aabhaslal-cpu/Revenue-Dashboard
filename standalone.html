@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Saviynt CS Intelligence Dashboard</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8FAFC; display: flex; height: 100vh; overflow: hidden; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    // ── DATA ────────────────────────────────────────────────────────────────────
+    const ACCOUNTS = [
+      {
+        id: 1,
+        name: "Banc of California",
+        health: "amber",
+        acv: "$680K",
+        renewal: "Q3 2026",
+        buyer: { name: "Martin Widyono", title: "SVP IAM" },
+        csm: "Sarah Chen",
+        products: ["IGA", "PAM"],
+        adoption: 41,
+        adoptionQoQ: 8,
+        sources: ["Gmail","Slack","Notion","Gainsight","Salesforce","Gong"],
+        adoptionHistory: [28,29,31,30,32,34,35,36,37,38,40,41],
+        timeline: [
+          { date: "Apr 2025", title: "IGA Go-Live", desc: "Successful IGA deployment across core applications.", type: "milestone" },
+          { date: "Jul 2025", title: "PAM Outage #1", desc: "Critical PAM outage affecting privileged access workflows.", type: "escalation" },
+          { date: "Sep 2025", title: "PAM Outage #2", desc: "Second PAM outage — root cause identified as config drift.", type: "escalation" },
+          { date: "Mar 2026", title: "PAM Reset + Design Partner", desc: "Full PAM configuration reset; account enrolled as design partner.", type: "watch" },
+          { date: "May 2026", title: "Native SSH Prototype Validated", desc: "Design-partner native SSH prototype passed acceptance testing.", type: "win" },
+          { date: "Q3 2026", title: "Renewal Approaching", desc: "Contract renewal window opens. Key stakeholder alignment needed.", type: "roadmap" },
+        ],
+        bva: [
+          { icon: "🛡️", label: "Risk Reduction", before: "340 orphaned accounts", after: "0 orphaned accounts", delta: "$312/identity saved", color: "teal" },
+          { icon: "📋", label: "Audit Readiness", before: "62% certification rate", after: "89% certification rate", delta: "−60% audit prep time", color: "blue" },
+          { icon: "⚡", label: "Operational Efficiency", before: "18-day access cycle", after: "3.2-day access cycle", delta: "$1.4M saved annually", color: "green" },
+        ],
+        opportunities: [
+          { signal: "Consumption", title: "PAM Over-Consumption", desc: "Usage 28% above contracted tier. Natural upgrade conversation.", value: "$140K" },
+          { signal: "Upgrade", title: "Pro Tier Upgrade", desc: "Feature requests align with Pro Tier capabilities.", value: "$280K" },
+          { signal: "Expansion", title: "Wave 2 ES SOW", desc: "Enterprise Services scoping for Wave 2 application onboarding.", value: "$95K" },
+        ],
+      },
+      {
+        id: 2,
+        name: "AMEX GBT",
+        health: "red",
+        acv: "$1.1M",
+        renewal: "Q4 2026",
+        buyer: { name: "David Park", title: "Enterprise IAM Lead" },
+        csm: "James Torres",
+        products: ["IGA", "ISPM", "Agentic AI POC"],
+        adoption: 67,
+        adoptionQoQ: 12,
+        sources: ["Gmail","Slack","Gainsight","Salesforce","Gong"],
+        adoptionHistory: [42,44,47,49,51,54,57,59,61,63,65,67],
+        timeline: [
+          { date: "Jan 2026", title: "Agentic AI POC Kickoff", desc: "Agentic AI proof-of-concept officially kicked off with exec sponsorship.", type: "milestone" },
+          { date: "Mar 2026", title: "ISPM POC Underway", desc: "Identity Security Posture Management POC in progress — early signals positive.", type: "watch" },
+          { date: "May 2026", title: "Env Extension Requested", desc: "Customer requested 60-day extension for POC environment.", type: "watch" },
+          { date: "Jun 2026", title: "SSRE Decommission Notice", desc: "Saviynt SSRE resource decommission creates risk to POC continuity.", type: "escalation" },
+        ],
+        bva: [
+          { icon: "🔐", label: "Risk Reduction", before: "0 NHI governed", after: "2,200 NHI governed", delta: "$480/NHI secured", color: "teal" },
+          { icon: "📋", label: "Audit Readiness", before: "71% certification rate", after: "94% certification rate", delta: "−78% audit findings", color: "blue" },
+          { icon: "⚡", label: "Operational Efficiency", before: "9.4-day access cycle", after: "1.8-day access cycle", delta: "$2.1M saved annually", color: "green" },
+        ],
+        opportunities: [
+          { signal: "Expansion", title: "Agentic AI Expansion", desc: "POC results justify full production deployment across 3 business units.", value: "$320K" },
+          { signal: "Upgrade", title: "Pro Tier Conversion", desc: "POC workloads require Pro Tier for production SLAs.", value: "$410K" },
+          { signal: "Services", title: "AI Governance SOW", desc: "Governance framework needed for Agentic AI production rollout.", value: "$180K" },
+        ],
+      },
+      {
+        id: 3,
+        name: "Itron",
+        health: "amber",
+        acv: "$420K",
+        renewal: "Q1 2027",
+        buyer: { name: "Lisa Nakamura", title: "IT Security Lead" },
+        csm: "Rachel Wong",
+        products: ["IGA"],
+        adoption: 38,
+        adoptionQoQ: -3,
+        sources: ["Gmail","Slack","Notion","Gainsight","Salesforce"],
+        adoptionHistory: [44,43,42,42,41,40,39,40,39,38,38,38],
+        timeline: [
+          { date: "Feb 2026", title: "7-App Integration Scoped", desc: "Scoping completed for 7 additional application integrations.", type: "milestone" },
+          { date: "Mar 2026", title: "ISPM Demo", desc: "ISPM capability demo delivered to IT Security team.", type: "roadmap" },
+          { date: "Apr 2026", title: "PowerShell Agent Issue", desc: "PowerShell agent failure blocking 3 planned integrations.", type: "escalation" },
+          { date: "May 2026", title: "VAP Proposal Open", desc: "Value Acceleration Package proposal submitted, awaiting approval.", type: "watch" },
+          { date: "Jun 2026", title: "Still Blocked", desc: "PowerShell agent issue unresolved — adoption declining.", type: "escalation" },
+        ],
+        bva: [
+          { icon: "🛡️", label: "Risk Reduction", before: "12% orphaned accounts", after: "3% orphaned accounts", delta: "$210/identity saved", color: "teal" },
+          { icon: "📋", label: "Audit Readiness", before: "54% certification rate", after: "82% certification rate", delta: "−55% audit prep time", color: "blue" },
+          { icon: "⚡", label: "Operational Efficiency", before: "Manual JML process", after: "Automated JML", delta: "$780K saved annually", color: "green" },
+        ],
+        opportunities: [
+          { signal: "Expansion", title: "ISPM/NHI POC", desc: "Post-demo interest in ISPM pilot for OT/ICS environment.", value: "$160K" },
+          { signal: "Services", title: "VAP SOW", desc: "Value Acceleration Package to unblock integrations and drive adoption.", value: "$210K" },
+          { signal: "Automation", title: "Termination Automation", desc: "Manual termination process is high-risk; automation SOW scoped.", value: "$75K" },
+        ],
+      },
+      {
+        id: 4,
+        name: "Freeport-McMoRan",
+        health: "amber",
+        acv: "$890K",
+        renewal: "Q2 2027",
+        buyer: { name: "AJ Reyes", title: "IAM Lead" },
+        csm: "Michael Okafor",
+        products: ["IGA", "ISPM"],
+        adoption: 55,
+        adoptionQoQ: 5,
+        sources: ["Gmail","Slack","Notion","Gainsight","Salesforce","Gong"],
+        adoptionHistory: [44,45,46,47,48,49,50,51,52,53,54,55],
+        timeline: [
+          { date: "Nov 2025", title: "ISPM Deployed", desc: "ISPM successfully deployed across primary data centers.", type: "milestone" },
+          { date: "Jan 2026", title: "False Positive Escalation", desc: "High false positive rate in ISPM alerts causing alert fatigue.", type: "escalation" },
+          { date: "Mar 2026", title: "RSA Issue Fixed (False)", desc: "RSA connector issue reported as fixed but problem persisted.", type: "escalation" },
+          { date: "May 2026", title: "Delhi Fix Confirmed", desc: "Delhi engineering team confirmed root cause fix deployed.", type: "roadmap" },
+          { date: "Jun 2026", title: "Delhi EA2 Approved", desc: "Early Access 2 release approved — resolves RSA connector issues.", type: "milestone" },
+        ],
+        bva: [
+          { icon: "🛡️", label: "Risk Reduction", before: "34% false positive rate", after: "<5% false positive rate", delta: "$312/identity secured", color: "teal" },
+          { icon: "📋", label: "Audit Readiness", before: "78% certification rate", after: "91% certification rate", delta: "−48% audit prep time", color: "blue" },
+          { icon: "⚡", label: "Operational Efficiency", before: "11 hardcoded secrets", after: "Azure Vault integrated", delta: "$1.1M risk reduced", color: "green" },
+        ],
+        opportunities: [
+          { signal: "Services", title: "ISPM Config SOW", desc: "Professional services to tune ISPM rules and eliminate false positives.", value: "$180K" },
+          { signal: "Migration", title: "OIM Migration SOW", desc: "Oracle Identity Manager migration to Saviynt — budget approved.", value: "$340K" },
+          { signal: "Interest", title: "Agentic AI Interest", desc: "CTO expressed interest in Agentic AI after industry briefing.", value: "$220K" },
+        ],
+      },
+    ];
+
+    const HEALTH_COLOR = { green: "#22C55E", amber: "#F59E0B", red: "#EF4444" };
+    const HEALTH_BG = { green: "#dcfce7", amber: "#fef3c7", red: "#fee2e2" };
+    const HEALTH_TEXT = { green: "#166534", amber: "#92400e", red: "#991b1b" };
+
+    const SOURCE_DOT = {
+      Gmail: "#EF4444",
+      Slack: "#7C3AED",
+      Notion: "#111827",
+      Gainsight: "#F97316",
+      Salesforce: "#2563EB",
+      Gong: "#22C55E",
+    };
+
+    const TYPE_STYLE = {
+      milestone: { bg: "#dbeafe", text: "#1e40af", label: "Milestone" },
+      win:       { bg: "#dcfce7", text: "#166534", label: "Win" },
+      watch:     { bg: "#fef3c7", text: "#92400e", label: "Watch" },
+      escalation:{ bg: "#fee2e2", text: "#991b1b", label: "Escalation" },
+      roadmap:   { bg: "#ccfbf1", text: "#0f766e", label: "Roadmap" },
+    };
+
+    const TYPE_DOT = {
+      milestone: "#3b82f6",
+      win: "#22c55e",
+      watch: "#f59e0b",
+      escalation: "#ef4444",
+      roadmap: "#0d9488",
+    };
+
+    const DELTA_STYLE = {
+      teal:  { bg: "#ccfbf1", text: "#0f766e" },
+      blue:  { bg: "#dbeafe", text: "#1e40af" },
+      green: { bg: "#dcfce7", text: "#166534" },
+    };
+
+    // ── ADOPTION CHART ───────────────────────────────────────────────────────────
+    function AdoptionChart({ data }) {
+      const W = 400, H = 80, PAD = 8;
+      const min = Math.max(0, Math.min(...data) - 5);
+      const max = Math.min(100, Math.max(...data) + 5);
+      const xStep = (W - PAD * 2) / (data.length - 1);
+      const yScale = (v) => H - PAD - ((v - min) / (max - min)) * (H - PAD * 2);
+      const pts = data.map((v, i) => [PAD + i * xStep, yScale(v)]);
+      const d = pts.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(" ");
+      const months = ["Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun"];
+
+      return (
+        <div style={{ overflowX: "auto" }}>
+          <svg viewBox={`0 0 ${W} ${H + 18}`} width="100%" style={{ minWidth: 300 }}>
+            <path d={d} stroke="#0D9488" strokeWidth="2" fill="none" strokeLinejoin="round" />
+            {pts.map(([x, y], i) => (
+              <circle key={i} cx={x} cy={y} r="3" fill="#0D9488" />
+            ))}
+            {months.map((m, i) => (
+              <text key={i} x={PAD + i * xStep} y={H + 14} textAnchor="middle"
+                fontSize="7" fill="#94a3b8">{m}</text>
+            ))}
+          </svg>
+        </div>
+      );
+    }
+
+    // ── MAIN APP ─────────────────────────────────────────────────────────────────
+    function App() {
+      const [selectedId, setSelectedId] = useState(1);
+      const [search, setSearch] = useState("");
+
+      const filtered = useMemo(() =>
+        ACCOUNTS.filter(a => a.name.toLowerCase().includes(search.toLowerCase())),
+        [search]
+      );
+
+      const account = ACCOUNTS.find(a => a.id === selectedId);
+
+      const aiAlert = () => alert('AI features require running npm run dev locally');
+
+      return (
+        <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+          {/* ── SIDEBAR ─────────────────────────────────────────────────────── */}
+          <div style={{
+            width: 260, minWidth: 260, background: "#0B1F3A", color: "#fff",
+            display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden"
+          }}>
+            {/* Logo */}
+            <div style={{ padding: "20px 16px 12px", borderBottom: "1px solid #1e3a5f" }}>
+              <div style={{ fontSize: 11, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>CS Intelligence</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>
+                <span style={{ color: "#0D9488" }}>Saviynt</span> Accounts
+              </div>
+            </div>
+
+            {/* Search */}
+            <div style={{ padding: "12px 16px" }}>
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search accounts..."
+                style={{
+                  width: "100%", padding: "8px 10px", borderRadius: 6,
+                  border: "1px solid #1e3a5f", background: "#0f2847", color: "#e2e8f0",
+                  fontSize: 13, outline: "none"
+                }}
+              />
+            </div>
+
+            {/* Account list */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 8px 16px" }}>
+              {filtered.map(a => (
+                <div
+                  key={a.id}
+                  onClick={() => setSelectedId(a.id)}
+                  style={{
+                    padding: "10px 12px", borderRadius: 8, marginBottom: 4, cursor: "pointer",
+                    background: a.id === selectedId ? "#1e3a5f" : "transparent",
+                    transition: "background 0.15s"
+                  }}
+                  onMouseEnter={e => { if (a.id !== selectedId) e.currentTarget.style.background = "#132d4f"; }}
+                  onMouseLeave={e => { if (a.id !== selectedId) e.currentTarget.style.background = "transparent"; }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                    <div style={{
+                      width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+                      background: HEALTH_COLOR[a.health]
+                    }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{a.name}</span>
+                  </div>
+                  <div style={{ paddingLeft: 16, display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 11, color: "#94a3b8" }}>{a.acv}</span>
+                    <span style={{ fontSize: 11, color: "#94a3b8" }}>{a.renewal}</span>
+                  </div>
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <div style={{ color: "#64748b", fontSize: 12, textAlign: "center", padding: "20px 0" }}>No accounts found</div>
+              )}
+            </div>
+          </div>
+
+          {/* ── MAIN CONTENT ────────────────────────────────────────────────── */}
+          <div style={{ flex: 1, overflowY: "auto", background: "#F8FAFC", position: "relative" }}>
+            {/* Demo badge */}
+            <div style={{
+              position: "sticky", top: 0, zIndex: 10, display: "flex", justifyContent: "flex-end",
+              padding: "10px 24px 0", pointerEvents: "none"
+            }}>
+              <span style={{
+                background: "#fef3c7", color: "#92400e", fontSize: 11, fontWeight: 600,
+                padding: "3px 10px", borderRadius: 12, border: "1px solid #fde68a",
+                pointerEvents: "auto"
+              }}>Demo data</span>
+            </div>
+
+            <div style={{ padding: "0 24px 32px", marginTop: -28 }}>
+
+              {/* ── PANEL 1: Account Header ──────────────────────────────── */}
+              <div style={{
+                background: "#fff", borderRadius: 12, padding: "24px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+                marginBottom: 16, marginTop: 16
+              }}>
+                {/* Top row */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <h1 style={{ fontSize: 24, fontWeight: 700, color: "#0f172a" }}>{account.name}</h1>
+                    <span style={{
+                      background: HEALTH_BG[account.health], color: HEALTH_TEXT[account.health],
+                      fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 12,
+                      textTransform: "capitalize"
+                    }}>{account.health === "amber" ? "At Risk" : account.health === "red" ? "Critical" : "Healthy"}</span>
+                  </div>
+                  {/* Products */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {account.products.map(p => (
+                      <span key={p} style={{
+                        background: "#dbeafe", color: "#1e40af", fontSize: 11, fontWeight: 600,
+                        padding: "3px 10px", borderRadius: 12
+                      }}>{p}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* People + metrics */}
+                <div style={{ display: "flex", gap: 32, flexWrap: "wrap", marginBottom: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Economic Buyer</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{account.buyer.name}</div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>{account.buyer.title}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>CSM</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{account.csm}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Contract ACV</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{account.acv}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Renewal</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{account.renewal}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Adoption</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{account.adoption}%</span>
+                      <span style={{
+                        fontSize: 12, fontWeight: 600,
+                        color: account.adoptionQoQ >= 0 ? "#16a34a" : "#dc2626"
+                      }}>
+                        {account.adoptionQoQ >= 0 ? "▲" : "▼"} {Math.abs(account.adoptionQoQ)}% QoQ
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Data sources strip */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11, color: "#94a3b8", marginRight: 4 }}>Data sources:</span>
+                  {account.sources.map(s => (
+                    <span key={s} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#475569" }}>
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: SOURCE_DOT[s], display: "inline-block" }} />
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── PANEL 2: Business Value Assessment ──────────────────── */}
+              <div style={{
+                background: "#fff", borderRadius: 12, padding: "20px 24px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.08)", marginBottom: 16
+              }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 16 }}>Business Value Assessment</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                  {account.bva.map((item, i) => (
+                    <div key={i} style={{ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+                      <div style={{ padding: "12px 14px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 18 }}>{item.icon}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{item.label}</span>
+                      </div>
+                      <div style={{ padding: "10px 14px", background: "#fff5f5", borderBottom: "1px solid #e2e8f0" }}>
+                        <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 2 }}>Before Saviynt</div>
+                        <div style={{ fontSize: 12, color: "#7f1d1d", fontWeight: 500 }}>{item.before}</div>
+                      </div>
+                      <div style={{ padding: "10px 14px", background: "#f0fdf4", borderBottom: "1px solid #e2e8f0" }}>
+                        <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 2 }}>After Saviynt</div>
+                        <div style={{ fontSize: 12, color: "#14532d", fontWeight: 500 }}>{item.after}</div>
+                      </div>
+                      <div style={{ padding: "10px 14px" }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 10,
+                          background: DELTA_STYLE[item.color].bg, color: DELTA_STYLE[item.color].text
+                        }}>{item.delta}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── PANEL 3: Relationship Timeline ──────────────────────── */}
+              <div style={{
+                background: "#fff", borderRadius: 12, padding: "20px 24px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.08)", marginBottom: 16
+              }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 20 }}>Relationship Timeline</h2>
+                <div style={{ overflowX: "auto", paddingBottom: 8 }}>
+                  <div style={{ display: "flex", gap: 0, minWidth: "max-content", position: "relative" }}>
+                    {/* Connecting line */}
+                    <div style={{
+                      position: "absolute", top: 10, left: 24,
+                      right: 24, height: 2, background: "#e2e8f0", zIndex: 0
+                    }} />
+                    {account.timeline.map((ev, i) => (
+                      <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 170, padding: "0 8px", position: "relative", zIndex: 1 }}>
+                        {/* Dot */}
+                        <div style={{
+                          width: 20, height: 20, borderRadius: "50%",
+                          background: TYPE_DOT[ev.type], border: "3px solid #fff",
+                          boxShadow: "0 0 0 2px " + TYPE_DOT[ev.type],
+                          marginBottom: 12, flexShrink: 0
+                        }} />
+                        {/* Card */}
+                        <div style={{
+                          background: "#f8fafc", border: "1px solid #e2e8f0",
+                          borderRadius: 8, padding: "10px 12px", width: "100%"
+                        }}>
+                          <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 3 }}>{ev.date}</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 4, lineHeight: 1.3 }}>{ev.title}</div>
+                          <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8, lineHeight: 1.4 }}>{ev.desc}</div>
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 8,
+                            background: TYPE_STYLE[ev.type].bg, color: TYPE_STYLE[ev.type].text
+                          }}>{TYPE_STYLE[ev.type].label}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── PANEL 4: Hidden Revenue Signals ─────────────────────── */}
+              <div style={{
+                background: "#fff", borderRadius: 12, padding: "20px 24px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
+              }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 16 }}>Hidden Revenue Signals</h2>
+
+                {/* Opportunity cards */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 24 }}>
+                  {account.opportunities.map((op, i) => (
+                    <div key={i} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "14px" }}>
+                      <div style={{ marginBottom: 8 }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 8,
+                          background: "#f0fdf4", color: "#166534"
+                        }}>{op.signal}</span>
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{op.title}</div>
+                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10, lineHeight: 1.4 }}>{op.desc}</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "#0D9488" }}>{op.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Adoption chart */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 8 }}>Adoption % — Last 12 Months</div>
+                  <AdoptionChart data={account.adoptionHistory} />
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    onClick={aiAlert}
+                    style={{
+                      background: "#0D9488", color: "#fff", border: "none",
+                      padding: "9px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >Build renewal story</button>
+                  <button
+                    onClick={aiAlert}
+                    style={{
+                      background: "#2563EB", color: "#fff", border: "none",
+                      padding: "9px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >Draft expansion email</button>
+                  <button
+                    onClick={aiAlert}
+                    style={{
+                      background: "#7C3AED", color: "#fff", border: "none",
+                      padding: "9px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >Pre-call brief</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
