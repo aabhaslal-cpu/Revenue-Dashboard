@@ -1,7 +1,7 @@
 # Trading Sim — Round 2 🤖📈
 
 An **autonomous daily trading simulation agent**. It manages a $100K paper
-portfolio for maximum returns over 30 days (2026-06-20 → 2026-07-20). The agent
+portfolio for maximum returns over 30 days (2026-06-22 → 2026-07-22). The agent
 makes **every** decision itself — asset selection, sizing, entry/exit, timing.
 There are no predefined positions or allocations.
 
