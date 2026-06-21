@@ -1,6 +1,15 @@
 # Logs
 logs
 *.log
+
+# Secrets / env files
+.env
+trading-sim-r2/.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
