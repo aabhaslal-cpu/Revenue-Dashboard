@@ -15,6 +15,7 @@ Configure via .env:
 
 from __future__ import annotations
 
+import html as html_lib
 import os
 import smtplib
 import ssl
@@ -23,6 +24,18 @@ from email.utils import formatdate
 from typing import Any, Dict, List
 
 from utils import log, log_error
+
+GREEN = "#1a7f37"
+RED = "#cf222e"
+GREY = "#57606a"
+
+
+def _esc(value: Any) -> str:
+    return html_lib.escape(str(value))
+
+
+def _color(value: float) -> str:
+    return GREEN if value > 0 else (RED if value < 0 else GREY)
 
 
 def _config() -> Dict[str, Any] | None:
@@ -42,8 +55,12 @@ def _config() -> Dict[str, Any] | None:
     }
 
 
-def _send(subject: str, body: str) -> bool:
-    """Send one email. Returns True on success, False if skipped/failed."""
+def _send(subject: str, body: str, html: str | None = None) -> bool:
+    """Send one email. Returns True on success, False if skipped/failed.
+
+    If `html` is given, sends multipart/alternative so clients that support
+    HTML render the rich version and the rest fall back to plain text.
+    """
     cfg = _config()
     if cfg is None:
         log.info("Email skipped (EMAIL_TO / SMTP_HOST not set)")
@@ -55,6 +72,8 @@ def _send(subject: str, body: str) -> bool:
     msg["To"] = ", ".join(cfg["to"])
     msg["Date"] = formatdate(localtime=True)
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype="html")
 
     # Retry up to 3 times with exponential backoff.
     import time
@@ -88,8 +107,76 @@ def _send(subject: str, body: str) -> bool:
     return False
 
 
+def _html_summary(summary: Dict[str, Any]) -> str:
+    """Build the rich HTML version of the daily summary."""
+    d_color = _color(summary["daily_pnl"])
+    c_color = _color(summary["cumulative_pnl"])
+
+    if summary["positions"]:
+        rows = "".join(
+            f"<tr>"
+            f"<td style='padding:4px 10px;'><b>{_esc(t)}</b></td>"
+            f"<td style='padding:4px 10px;text-align:right;'>{p['quantity']:.4f}</td>"
+            f"<td style='padding:4px 10px;text-align:right;'>${p['avg_price']:,.2f}</td>"
+            f"<td style='padding:4px 10px;text-align:right;'>${p['market_value']:,.2f}</td>"
+            f"<td style='padding:4px 10px;text-align:right;'>{p['weight_pct']:.1f}%</td>"
+            f"</tr>"
+            for t, p in summary["positions"].items()
+        )
+        positions_html = (
+            "<table style='border-collapse:collapse;font-size:14px;'>"
+            "<tr style='color:#57606a;text-align:left;'>"
+            "<th style='padding:4px 10px;'>Asset</th>"
+            "<th style='padding:4px 10px;text-align:right;'>Qty</th>"
+            "<th style='padding:4px 10px;text-align:right;'>Avg</th>"
+            "<th style='padding:4px 10px;text-align:right;'>Value</th>"
+            "<th style='padding:4px 10px;text-align:right;'>Weight</th></tr>"
+            f"{rows}</table>"
+        )
+    else:
+        positions_html = "<p style='color:#57606a;'>100% cash — no open positions.</p>"
+
+    actions_html = "".join(f"<li>{_esc(a)}</li>" for a in summary["trade_actions"])
+    headlines_html = "".join(f"<li>{_esc(h)}</li>" for h in summary["headlines"][:5]) \
+        or "<li>(none)</li>"
+
+    return f"""\
+<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+            color:#1f2328;max-width:640px;">
+  <h2 style="margin:0 0 4px;">📊 Trading Sim — Round 2</h2>
+  <div style="color:#57606a;margin-bottom:16px;">{_esc(summary['date'])}</div>
+
+  <table style="border-collapse:collapse;font-size:15px;margin-bottom:16px;">
+    <tr><td style="padding:3px 12px 3px 0;color:#57606a;">Portfolio Value</td>
+        <td style="padding:3px 0;"><b>${summary['portfolio_value']:,.2f}</b></td></tr>
+    <tr><td style="padding:3px 12px 3px 0;color:#57606a;">Cash</td>
+        <td style="padding:3px 0;">${summary['cash']:,.2f} ({summary['cash_pct']:.1f}%)</td></tr>
+    <tr><td style="padding:3px 12px 3px 0;color:#57606a;">Daily P&amp;L</td>
+        <td style="padding:3px 0;color:{d_color};"><b>${summary['daily_pnl']:,.2f}
+            ({summary['daily_pnl_pct']:+.2f}%)</b></td></tr>
+    <tr><td style="padding:3px 12px 3px 0;color:#57606a;">Cumulative P&amp;L</td>
+        <td style="padding:3px 0;color:{c_color};"><b>${summary['cumulative_pnl']:,.2f}
+            ({summary['cumulative_pnl_pct']:+.2f}%)</b></td></tr>
+  </table>
+
+  <p style="margin:0 0 16px;"><b>Market read:</b> {_esc(summary.get('market_assessment') or '—')}</p>
+
+  <h3 style="margin:0 0 6px;">Positions</h3>
+  {positions_html}
+
+  <h3 style="margin:16px 0 6px;">Today's actions</h3>
+  <ul style="margin:0 0 16px;padding-left:20px;">{actions_html}</ul>
+
+  <h3 style="margin:0 0 6px;">Top headlines</h3>
+  <ul style="margin:0 0 16px;padding-left:20px;">{headlines_html}</ul>
+
+  <h3 style="margin:0 0 6px;">Reasoning</h3>
+  <p style="white-space:pre-wrap;color:#1f2328;">{_esc(summary.get('reasoning') or '—')}</p>
+</div>"""
+
+
 def send_daily_summary(summary: Dict[str, Any]) -> bool:
-    """Email the daily run summary."""
+    """Email the daily run summary (HTML + plain-text fallback)."""
     arrow = "🟢" if summary["daily_pnl"] > 0 else ("🔴" if summary["daily_pnl"] < 0 else "⚪")
     subject = (
         f"{arrow} Trading Sim R2 — {summary['date']} | "
@@ -126,7 +213,7 @@ def send_daily_summary(summary: Dict[str, Any]) -> bool:
 
     lines += ["", "Reasoning:", summary.get("reasoning") or "—"]
 
-    return _send(subject, "\n".join(lines))
+    return _send(subject, "\n".join(lines), html=_html_summary(summary))
 
 
 def send_failure_alert(date: str, error: str) -> bool:
@@ -138,4 +225,12 @@ def send_failure_alert(date: str, error: str) -> bool:
         "The portfolio was NOT modified (atomic writes protect it). "
         "Check errors.log on the host for the full traceback."
     )
-    return _send(subject, body)
+    html = f"""\
+<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2328;">
+  <h2 style="color:{RED};margin:0 0 8px;">🚨 Trading Sim R2 — Run Failed</h2>
+  <p style="color:#57606a;margin:0 0 12px;">{_esc(date)}</p>
+  <p><b>Error:</b> <code>{_esc(error)}</code></p>
+  <p>The portfolio was <b>not</b> modified (atomic writes protect it).
+     Check <code>errors.log</code> on the host for the full traceback.</p>
+</div>"""
+    return _send(subject, body, html=html)

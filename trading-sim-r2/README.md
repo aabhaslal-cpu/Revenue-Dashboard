@@ -23,11 +23,21 @@ There are no predefined positions or allocations.
 
 ### How you'll know it ran
 
-Every successful cycle **emails you a summary** (portfolio value, daily/cumulative
-P&L, positions, actions, reasoning, headlines) — configure `EMAIL_TO` + `SMTP_*`
-below. If a cycle **fails outright**, you get a `🚨 RUN FAILED` alert email
-instead. You'll also see a new dated row in Notion and a new entry in
-`history.json` each day. Email is optional — leave the SMTP vars blank to skip it.
+- **HTML email summary** every successful cycle (portfolio value, color-coded
+  daily/cumulative P&L, positions table, actions, reasoning, headlines) —
+  configure `EMAIL_TO` + `SMTP_*`. A plain-text version is included for clients
+  that don't render HTML.
+- **`🚨 RUN FAILED` alert email** if a cycle errors out.
+- **Dead man's switch** — email only tells you about runs that *happen*. To catch
+  a run that's **missed entirely** (cron broke, box was down), the agent pings
+  `HEARTBEAT_URL` on every success. Create a free check at
+  [healthchecks.io](https://healthchecks.io) with period 1 day, paste its ping
+  URL into `HEARTBEAT_URL`, and *it* emails/texts you if a daily ping never
+  arrives. On failure the agent also hits `<HEARTBEAT_URL>/fail` to flag it
+  immediately.
+- **Notion row** + **`history.json` entry** each day for the full audit trail.
+
+All of these are optional — leave the relevant vars blank to skip them.
 
 ## File structure
 
@@ -38,7 +48,8 @@ trading-sim-r2/
   news.py             # headline fetcher (NewsAPI + RSS fallback)
   decision_engine.py  # Claude API call + JSON parse
   notion_logger.py    # Notion integration
-  email_notifier.py   # email summary + failure alerts (SMTP)
+  email_notifier.py   # HTML email summary + failure alerts (SMTP)
+  heartbeat.py        # dead man's switch (cron-monitor pings)
   utils.py            # logging, retry/backoff, atomic JSON I/O
   portfolio.json      # live portfolio state
   history.json        # full daily history log
@@ -75,6 +86,7 @@ cp .env.example .env
 | `SMTP_PORT`          | optional | `587` (STARTTLS, default) or `465` (SSL). |
 | `SMTP_USER` / `SMTP_PASSWORD` | optional | SMTP login (Gmail: an App Password). |
 | `EMAIL_FROM`         | optional | From address; defaults to `SMTP_USER`. |
+| `HEARTBEAT_URL`      | optional | Cron-monitor ping URL (dead man's switch). |
 
 If an optional integration is unconfigured, the agent **degrades gracefully**
 (skips Notion, falls back to RSS, fetches crypto on the free endpoint) and keeps

@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 
 import email_notifier
+import heartbeat
 import news
 import prices as price_mod
 from decision_engine import get_trade_decision
@@ -364,11 +365,18 @@ def safe_run_cycle(today: Optional[str] = None, backtest: bool = False) -> None:
     notifies you instead of failing silently.
     """
     day = today or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    heartbeat.ping_start()
     try:
-        run_cycle(today=today, backtest=backtest)
+        summary = run_cycle(today=today, backtest=backtest)
+        # Reset the dead man's switch — a missed ping is what triggers the alert.
+        heartbeat.ping_success(
+            f"{day}: ${summary['portfolio_value']:,.0f} "
+            f"({summary['cumulative_pnl_pct']:+.2f}% total)"
+        )
     except Exception as exc:  # noqa: BLE001 - top-level per-run safety net
         log_error(f"Trading cycle for {day} failed", exc)
         email_notifier.send_failure_alert(day, f"{type(exc).__name__}: {exc}")
+        heartbeat.ping_failure(f"{day}: {type(exc).__name__}: {exc}")
         raise
 
 
