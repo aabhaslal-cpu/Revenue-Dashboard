@@ -18,8 +18,16 @@ There are no predefined positions or allocations.
 3. **Loads portfolio state** from `portfolio.json`
 4. **Calls Claude** (`claude-opus-4-8`, adaptive thinking) for the trade decision
 5. **Executes** the decision — updates `portfolio.json` (atomic write)
-6. **Logs** everything to Notion + `history.json`
+6. **Logs** everything to Notion + `history.json`, and **emails** you the summary
 7. **Prints** a daily summary to the terminal
+
+### How you'll know it ran
+
+Every successful cycle **emails you a summary** (portfolio value, daily/cumulative
+P&L, positions, actions, reasoning, headlines) — configure `EMAIL_TO` + `SMTP_*`
+below. If a cycle **fails outright**, you get a `🚨 RUN FAILED` alert email
+instead. You'll also see a new dated row in Notion and a new entry in
+`history.json` each day. Email is optional — leave the SMTP vars blank to skip it.
 
 ## File structure
 
@@ -30,6 +38,7 @@ trading-sim-r2/
   news.py             # headline fetcher (NewsAPI + RSS fallback)
   decision_engine.py  # Claude API call + JSON parse
   notion_logger.py    # Notion integration
+  email_notifier.py   # email summary + failure alerts (SMTP)
   utils.py            # logging, retry/backoff, atomic JSON I/O
   portfolio.json      # live portfolio state
   history.json        # full daily history log
@@ -61,6 +70,11 @@ cp .env.example .env
 | `COINGECKO_API_KEY`  | optional | Raises crypto rate limits. Works without one. |
 | `COINGECKO_API_TIER` | optional | `demo` (default) or `pro`. |
 | `NEWS_API_KEY`       | optional | newsapi.org key. Falls back to RSS if blank. |
+| `EMAIL_TO`           | optional | Recipient(s), comma-separated. Enables email. |
+| `SMTP_HOST`          | optional | e.g. `smtp.gmail.com`. Enables email. |
+| `SMTP_PORT`          | optional | `587` (STARTTLS, default) or `465` (SSL). |
+| `SMTP_USER` / `SMTP_PASSWORD` | optional | SMTP login (Gmail: an App Password). |
+| `EMAIL_FROM`         | optional | From address; defaults to `SMTP_USER`. |
 
 If an optional integration is unconfigured, the agent **degrades gracefully**
 (skips Notion, falls back to RSS, fetches crypto on the free endpoint) and keeps

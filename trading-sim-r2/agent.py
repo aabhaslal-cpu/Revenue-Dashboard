@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 
+import email_notifier
 import news
 import prices as price_mod
 from decision_engine import get_trade_decision
@@ -346,13 +347,29 @@ def run_cycle(today: Optional[str] = None, backtest: bool = False) -> Dict[str, 
         "decision": decision,
     })
 
-    # 8. Notion logging (best-effort).
+    # 8. Notion logging + email summary (both best-effort).
     log_daily_run(summary)
+    email_notifier.send_daily_summary(summary)
 
     # 9. Terminal summary.
     print_summary(summary)
     log.info("=== Trading cycle complete for %s ===", today)
     return summary
+
+
+def safe_run_cycle(today: Optional[str] = None, backtest: bool = False) -> None:
+    """Run a cycle; on any uncaught failure, email an alert and log it.
+
+    Used by the scheduler and CLI so an unattended run that crashes still
+    notifies you instead of failing silently.
+    """
+    day = today or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    try:
+        run_cycle(today=today, backtest=backtest)
+    except Exception as exc:  # noqa: BLE001 - top-level per-run safety net
+        log_error(f"Trading cycle for {day} failed", exc)
+        email_notifier.send_failure_alert(day, f"{type(exc).__name__}: {exc}")
+        raise
 
 
 # --------------------------------------------------------------------------- #
@@ -370,17 +387,25 @@ def main() -> None:
 
     try:
         if args.backtest:
-            run_cycle(today=args.date, backtest=True)
+            safe_run_cycle(today=args.date, backtest=True)
             return
         if args.run_now:
-            run_cycle()
+            safe_run_cycle()
             return
 
         # Default: schedule a daily run at 06:00 (server local time; set the
-        # box to PT, or run via cron — see README).
+        # box to PT, or run via cron — see README). The scheduled job swallows
+        # exceptions (after emailing an alert) so one bad day can't kill the
+        # long-running scheduler.
         import schedule
 
-        schedule.every().day.at("06:00").do(run_cycle)
+        def scheduled_job() -> None:
+            try:
+                safe_run_cycle()
+            except Exception:  # noqa: BLE001 - already logged + emailed
+                pass
+
+        schedule.every().day.at("06:00").do(scheduled_job)
         log.info("⏰ Scheduled daily run at 06:00. Waiting... (Ctrl-C to exit)")
         log.info("    Errors are written to %s", ERROR_LOG)
         import time
